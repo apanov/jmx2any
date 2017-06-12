@@ -1,11 +1,16 @@
 package org.vafer.jmx;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.util.Map;
+import java.util.Set;
+
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import org.vafer.jmx.output.ConsoleOutput;
+import org.vafer.jmx.pipe.ConverterPipe;
+import org.vafer.jmx.pipe.JmxPipe;
 
 public final class Main {
 
@@ -16,8 +21,10 @@ public final class Main {
     private boolean agent = false;
 
     private void run() throws Exception {
+        JmxPipe output = new ConverterPipe(new ConsoleOutput(), "");
+
         if (agent) {
-            new Agent(configPath).start();
+            new Agent(configPath, output).start();
             // just running the agent until the jvm is terminated
             BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 
@@ -27,9 +34,14 @@ public final class Main {
             }
             System.exit(0);
         } else {
-            Exporter exporter = new Exporter();
-            Exporter.Config config = exporter.load(configPath);
-            exporter.output(config);
+            Config config = Config.load(configPath);
+            for (Map.Entry<Server, Set<String>> sq: config.queries.entrySet()) {
+                if (sq.getValue() == null || sq.getValue().isEmpty()) {
+                    throw new IllegalArgumentException("Query can't be null or empty, " + sq.getKey());
+                }
+                Worker worker = new Worker(sq.getKey(), sq.getValue(), output, 0);
+                worker.start();
+            }
         }
     }
 
@@ -44,4 +56,5 @@ public final class Main {
         }
         m.run();
     }
+
 }
