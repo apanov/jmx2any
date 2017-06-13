@@ -38,10 +38,12 @@ public class Worker extends Thread {
 
     @Override
     public void run() {
-        try {
-            NativeUtil.setns(server.getNsFd());
-        } catch (IOException e) {
-            throw new RuntimeException("Couldn't start worker for server " + server, e);
+        if (server.getPid() != null) {
+            try {
+                NativeUtil.setns(server.getNsFd());
+            } catch (IOException e) {
+                throw new RuntimeException("Couldn't start worker for server " + server, e);
+            }
         }
 
         final Exporter exporter = new Exporter();
